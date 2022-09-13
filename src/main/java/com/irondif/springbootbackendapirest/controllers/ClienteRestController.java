@@ -4,6 +4,8 @@ import ch.qos.logback.core.net.server.Client;
 import com.irondif.springbootbackendapirest.models.entity.Cliente;
 import com.irondif.springbootbackendapirest.models.services.IClienteService;
 import org.apache.tomcat.util.http.parser.HttpParser;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
@@ -36,6 +38,8 @@ public class ClienteRestController {
 
     @Autowired
     private IClienteService clienteService;
+
+    private final Logger log = LoggerFactory.getLogger(ClienteRestController.class);
 
     @GetMapping("/clientes")
     @ResponseStatus(HttpStatus.OK)
@@ -198,6 +202,7 @@ public class ClienteRestController {
 
             String nombreArchivo = UUID.randomUUID().toString() + "_" + archivo.getOriginalFilename().replace(" ", "");
             Path rutaArchivo = Paths.get("uploads").resolve(nombreArchivo).toAbsolutePath();
+            log.info(rutaArchivo.toString());
 
             try {
                 Files.copy(archivo.getInputStream(), rutaArchivo);
@@ -232,6 +237,8 @@ public class ClienteRestController {
     @GetMapping("/uploads/img/{nombreFoto:.+}")
     public ResponseEntity<Resource> verFoto(@PathVariable String nombreFoto){
         Path rutaArchivo = Paths.get("uploads").resolve(nombreFoto).toAbsolutePath();
+        log.info(rutaArchivo.toString());
+
         Resource recurso = null;
 
         try {
