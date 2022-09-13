@@ -1,5 +1,6 @@
 package com.irondif.springbootbackendapirest.controllers;
 
+import ch.qos.logback.core.net.server.Client;
 import com.irondif.springbootbackendapirest.models.entity.Cliente;
 import com.irondif.springbootbackendapirest.models.services.IClienteService;
 import org.apache.tomcat.util.http.parser.HttpParser;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.validation.Valid;
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -156,6 +158,18 @@ public class ClienteRestController {
         Map<String, Object> response = new HashMap<>();
 
         try {
+//            A parte de borrar el cliente, tambien se borrará la foto que tenga asociada.
+            Cliente cliente = clienteService.findById(id);
+            String nombreFotoAnterior = cliente.getFoto();
+
+            if(nombreFotoAnterior != null && nombreFotoAnterior.length() > 10){
+                Path rutaFotoAnterior = Paths.get("uploads").resolve(nombreFotoAnterior).toAbsolutePath();
+                File archivoFotoAnterior = rutaFotoAnterior.toFile();
+                if(archivoFotoAnterior.exists() && archivoFotoAnterior.canRead()){
+                    archivoFotoAnterior.delete();
+                }
+            }
+
             clienteService.delete(id);
         } catch (DataAccessException e){
             response.put("mensaje", "Error al eliminar al cliente en la base de datos!");
@@ -167,14 +181,18 @@ public class ClienteRestController {
         return new ResponseEntity<Map<String, Object>>(response, HttpStatus.OK);
     }
 
+//    En este post se configura la subida de archivos.
     @PostMapping("/clientes/upload")
+//    La palabra 'archivo' que está dentro del @RequestParam es lo que tenemos que poner como key en el postman.
+//    La palabra 'id' que está dentro del segundo @RequestParam tambien lo tenemos que poner en el key ya que en este caso el ID está asociado a un cliente.
     public ResponseEntity<?> upload(@RequestParam("archivo") MultipartFile archivo, @RequestParam("id") Long id){
         Map<String, Object> response = new HashMap<>();
 
         Cliente cliente = clienteService.findById(id);
 
         if(!archivo.isEmpty()){
-            String nombreArchivo = archivo.getOriginalFilename();
+
+            String nombreArchivo = UUID.randomUUID().toString() + "_" + archivo.getOriginalFilename().replace(" ", "");
             Path rutaArchivo = Paths.get("uploads").resolve(nombreArchivo).toAbsolutePath();
 
             try {
@@ -183,6 +201,17 @@ public class ClienteRestController {
                 response.put("mensaje", "Error al subir la imagen del cliente: " + nombreArchivo);
                 response.put("error", e.getMessage().concat(": ").concat(e.getCause().getMessage()));
                 return new ResponseEntity<Map<String, Object>>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+            }
+
+//            La variable y el condicional siguientes sirven para borrar la foto anterior cuando un usuario sube una foto nueva
+            String nombreFotoAnterior = cliente.getFoto();
+
+            if(nombreFotoAnterior != null && nombreFotoAnterior.length() > 10){
+                Path rutaFotoAnterior = Paths.get("uploads").resolve(nombreFotoAnterior).toAbsolutePath();
+                File archivoFotoAnterior = rutaFotoAnterior.toFile();
+                if(archivoFotoAnterior.exists() && archivoFotoAnterior.canRead()){
+                    archivoFotoAnterior.delete();
+                }
             }
 
             cliente.setFoto(nombreArchivo);
